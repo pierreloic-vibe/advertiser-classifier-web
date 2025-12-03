@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Website Classification Task</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            text-align: center; 
+            background-color: #f9f9f9;
+        }
+        .hidden { display: none; }
+        
+        /* Login */
+        #login-area { 
+            margin-top: 15vh; 
+            background: white; 
+            padding: 40px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+            display: inline-block;
+        }
+        input { 
+            padding: 12px; 
+            font-size: 16px; 
+            border: 1px solid #ddd; 
+            border-radius: 4px; 
+            width: 200px; 
+            margin-right: 10px;
+        }
+        
+        /* Header Stats */
+        .stats-bar { 
+            background: white; 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin-bottom: 20px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+        }
+        
+        /* Iframe zone */
+        #work-area { display: flex; flex-direction: column; min-height: 80vh; }
+        .iframe-container { 
+            flex-grow: 1; 
+            position: relative; 
+            width: 100%; 
+            border: 1px solid #ccc; 
+            background: #fff; 
+            height: 500px; 
+            margin-bottom: 20px;
+        }
+        iframe { width: 100%; height: 100%; border: none; }
+        
+        /* Buttons */
+        .btn-primary { 
+            background-color: #2c3e50; 
+            color: white; 
+            padding: 12px 24px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 16px; 
+            transition: background 0.2s;
+        }
+        .btn-primary:hover { background-color: #1a252f; }
+        
+        .open-link { 
+            display: block; 
+            margin-bottom: 10px; 
+            color: #007bff; 
+            text-decoration: none; 
+            font-weight: 500;
+        }
+        .open-link:hover { text-decoration: underline; }
+
+        /* Grid Industries */
+        #controls { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); 
+            gap: 12px; 
+        }
+        .ind-btn { 
+            padding: 15px 10px; 
+            cursor: pointer; 
+            background-color: #fff; 
+            color: #333; 
+            border: 1px solid #ddd; 
+            border-radius: 6px; 
+            font-size: 13px; 
+            font-weight: 500; 
+            transition: all 0.2s; 
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            line-height: 1.4;
+        }
+        .ind-btn:hover { 
+            background-color: #eef2f6; 
+            border-color: #b0c4de; 
+            transform: translateY(-1px);
+        }
+        .ind-btn:disabled { opacity: 0.6; cursor: wait; transform: none; }
+    </style>
+</head>
+<body>
+
+    <div id="login-area">
+        <h2 style="margin-top:0;">Login</h2>
+        <p style="color:#666; margin-bottom: 20px;">Please enter your first name to start.</p>
+        <input type="text" id="username" placeholder="Ex: John">
+        <button class="btn-primary" onclick="startSession()">Start</button>
+    </div>
+
+    <div id="work-area" class="hidden">
+        <div class="stats-bar">
+            <div>User: <strong id="display-user"></strong></div>
+            <div>Remaining sites: <strong id="count-todo" style="color: #d9534f;">...</strong></div>
+        </div>
+
+        <div>
+            <a id="external-link" href="#" target="_blank" class="open-link">Open site in a new tab ↗</a>
+        </div>
+        
+        <div class="iframe-container">
+            <iframe id="site-frame" src=""></iframe>
+        </div>
+
+        <p style="color:#666; font-size: 0.9em; margin-bottom: 10px;">Select the matching industry:</p>
+        <div id="controls">
+            </div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const API_URL = "https://script.google.com/macros/s/AKfycbw4A7xtaWnTWV9CTxR94GyX6eIcUM9VSPDL1uv9uUckuLPzuGBBcXdAfFVYvJ-0sSnU/exec"; 
+        
+        // Key / Label List
+        const INDUSTRIES = [
+            { key: "AUTOMOTIVE", label: "Automotive" },
+            { key: "EDUCATION", label: "Education" },
+            { key: "FINANCIAL_SERVICES", label: "Financial Services" },
+            { key: "FOOD_DRINK", label: "Food & Drink" },
+            { key: "FOOD_DRINK_WINE", label: "Alcoholic Beverages" },
+            { key: "GAMING", label: "Gaming" },
+            { key: "GAMING_GAMBLING", label: "Casino & Gambling" },
+            { key: "HEALTH_FITNESS", label: "Health & Fitness" },
+            { key: "HEALTH_FITNESS_ALTERNATIVE", label: "CBD products or paraphernalia" },
+            { key: "LAW_LEGAL_PRACTICE", label: "Law & Legal Practice" },
+            { key: "MEDIA_ENTERTAINMENT", label: "Media & Entertainment" },
+            { key: "POLITICS", label: "Politics" },
+            { key: "PROFESSIONAL_SERVICES", label: "Professional Services" },
+            { key: "REAL_ESTATE", label: "Real Estate" },
+            { key: "RELIGION_SPIRITUALITY", label: "Religious & Spirituality" },
+            { key: "RETAIL", label: "Retail" },
+            { key: "TECHNOLOGY_TELECOMMUNICATIONS", label: "Technology & Telecommunications" },
+            { key: "TRAVEL_HOSPITALITY", label: "Travel & Hospitality" },
+            { key: "OTHER", label: "Other" }
+        ];
+
+        // --- GLOBAL VARIABLES ---
+        let currentUser = "";
+        let todoList = [];
+        let currentSite = null;
+
+        // 1. Start Session
+        function startSession() {
+            const input = document.getElementById('username').value.trim();
+            if (!input) return alert("Please enter a name!");
+            
+            currentUser = input.toLowerCase();
+            document.getElementById('display-user').innerText = input;
+            
+            const btn = document.querySelector('#login-area button');
+            btn.innerText = "Loading...";
+            btn.disabled = true;
+            
+            fetchData();
+        }
+
+        // 2. Fetch Data from Google Sheet
+        async function fetchData() {
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+                
+                const allSites = data.sites;
+                const history = data.history;
+
+                // Filter out what has already been done by this user
+                const doneIds = history
+                    .filter(h => h.user.toString().toLowerCase() === currentUser)
+                    .map(h => h.siteId.toString());
+
+                todoList = allSites.filter(site => !doneIds.includes(site.id.toString()));
+
+                // Random Shuffle
+                todoList.sort(() => Math.random() - 0.5);
+
+                initInterface();
+            } catch (error) {
+                alert("Connection error. Please check your internet connection.");
+                console.error(error);
+                document.querySelector('#login-area button').innerText = "Retry";
+                document.querySelector('#login-area button').disabled = false;
+            }
+        }
+
+        // 3. Init Interface
+        function initInterface() {
+            document.getElementById('login-area').classList.add('hidden');
+            document.getElementById('work-area').classList.remove('hidden');
+            
+            const container = document.getElementById('controls');
+            container.innerHTML = ""; // Clean
+            
+            INDUSTRIES.forEach(ind => {
+                const btn = document.createElement('button');
+                btn.className = "ind-btn";
+                // DISPLAY LABEL
+                btn.innerText = ind.label; 
+                // SEND KEY
+                btn.onclick = () => submitVote(ind.key); 
+                container.appendChild(btn);
+            });
+
+            loadNextSite();
+        }
+
+        // 4. Load Next Site
+        function loadNextSite() {
+            if (todoList.length === 0) {
+                document.getElementById('work-area').innerHTML = 
+                    "<div style='margin-top:50px;'><h1>🎉 All done!</h1><p>You have classified all assigned websites. Thank you!</p></div>";
+                return;
+            }
+
+            document.getElementById('count-todo').innerText = todoList.length;
+            currentSite = todoList[0];
+
+            // Iframe and Link
+            document.getElementById('site-frame').src = currentSite.url;
+            document.getElementById('external-link').href = currentSite.url;
+        }
+
+        // 5. Submit Vote
+        function submitVote(industryKey) {
+            const btns = document.querySelectorAll('.ind-btn');
+            btns.forEach(b => b.disabled = true);
+            
+            const payload = {
+                user: currentUser,
+                siteId: currentSite.id,
+                siteUrl: currentSite.url,
+                industry: industryKey 
+            };
+
+            fetch(API_URL, {
+                method: "POST",
+                body: JSON.stringify(payload)
+            })
+            .then(() => {
+                todoList.shift(); // Remove processed site
+                loadNextSite();
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Error saving data. Please try again.");
+            })
+            .finally(() => {
+                btns.forEach(b => b.disabled = false);
+            });
+        }
+    </script>
+</body>
+</html>
