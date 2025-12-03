@@ -45,6 +45,20 @@
             align-items: center;
         }
         
+        /* URL Display Area */
+        .url-display-box {
+            margin-bottom: 15px;
+        }
+        .url-text {
+            font-family: 'Courier New', Courier, monospace;
+            background: #e9ecef;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: #333;
+            user-select: all; /* Makes selection easier */
+        }
+        
         /* Iframe zone */
         #work-area { display: flex; flex-direction: column; min-height: 80vh; }
         .iframe-container { 
@@ -72,11 +86,11 @@
         .btn-primary:hover { background-color: #1a252f; }
         
         .open-link { 
-            display: block; 
-            margin-bottom: 10px; 
+            display: inline-block; 
+            margin-bottom: 5px; 
             color: #007bff; 
             text-decoration: none; 
-            font-weight: 500;
+            font-weight: 600;
         }
         .open-link:hover { text-decoration: underline; }
 
@@ -126,8 +140,11 @@
             <div>Remaining sites: <strong id="count-todo" style="color: #d9534f;">...</strong></div>
         </div>
 
-        <div>
+        <div class="url-display-box">
             <a id="external-link" href="#" target="_blank" class="open-link">Open site in a new tab ↗</a>
+            <br>
+            <span style="font-size: 0.8em; color: #666;">Target URL:</span> 
+            <span id="visible-url" class="url-text">...</span>
         </div>
         
         <div class="iframe-container">
@@ -195,14 +212,11 @@
                 const allSites = data.sites;
                 const history = data.history;
 
-                // Filter out what has already been done by this user
                 const doneIds = history
                     .filter(h => h.user.toString().toLowerCase() === currentUser)
                     .map(h => h.siteId.toString());
 
                 todoList = allSites.filter(site => !doneIds.includes(site.id.toString()));
-
-                // Random Shuffle
                 todoList.sort(() => Math.random() - 0.5);
 
                 initInterface();
@@ -220,19 +234,27 @@
             document.getElementById('work-area').classList.remove('hidden');
             
             const container = document.getElementById('controls');
-            container.innerHTML = ""; // Clean
+            container.innerHTML = ""; 
             
             INDUSTRIES.forEach(ind => {
                 const btn = document.createElement('button');
                 btn.className = "ind-btn";
-                // DISPLAY LABEL
                 btn.innerText = ind.label; 
-                // SEND KEY
                 btn.onclick = () => submitVote(ind.key); 
                 container.appendChild(btn);
             });
 
             loadNextSite();
+        }
+
+        // Helper: Ensure URL has https://
+        function formatUrl(url) {
+            if (!url) return "";
+            let cleanUrl = url.trim();
+            if (!cleanUrl.match(/^https?:\/\//i)) {
+                cleanUrl = 'https://' + cleanUrl;
+            }
+            return cleanUrl;
         }
 
         // 4. Load Next Site
@@ -246,9 +268,13 @@
             document.getElementById('count-todo').innerText = todoList.length;
             currentSite = todoList[0];
 
-            // Iframe and Link
-            document.getElementById('site-frame').src = currentSite.url;
-            document.getElementById('external-link').href = currentSite.url;
+            // Process URL to fix the "example.com" vs "https://example.com" issue
+            const fullUrl = formatUrl(currentSite.url);
+
+            // Update Iframe, Button Link, and Text Display
+            document.getElementById('site-frame').src = fullUrl;
+            document.getElementById('external-link').href = fullUrl;
+            document.getElementById('visible-url').innerText = fullUrl; // Shows URL explicitly
         }
 
         // 5. Submit Vote
@@ -256,10 +282,12 @@
             const btns = document.querySelectorAll('.ind-btn');
             btns.forEach(b => b.disabled = true);
             
+            // Note: We send the raw URL (from sheet) back to history, 
+            // or use 'formatUrl(currentSite.url)' if you want to save the fixed https version.
             const payload = {
                 user: currentUser,
                 siteId: currentSite.id,
-                siteUrl: currentSite.url,
+                siteUrl: currentSite.url, 
                 industry: industryKey 
             };
 
@@ -268,7 +296,7 @@
                 body: JSON.stringify(payload)
             })
             .then(() => {
-                todoList.shift(); // Remove processed site
+                todoList.shift(); 
                 loadNextSite();
             })
             .catch(err => {
